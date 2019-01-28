@@ -3,10 +3,11 @@ package simple
 import (
 	"context"
 	"fmt"
-	"github.com/ngerakines/yacache"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/ngerakines/yacache"
 )
 
 func ExampleNewCache_Get() {

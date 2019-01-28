@@ -1,8 +1,9 @@
 package simple
 
 import (
-	"github.com/ngerakines/yacache"
 	"time"
+
+	"github.com/ngerakines/yacache"
 )
 
 type Key string

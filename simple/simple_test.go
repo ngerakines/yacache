@@ -2,8 +2,9 @@ package simple
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 func ExampleKey() {
@@ -13,7 +14,7 @@ func ExampleKey() {
 
 func ExampleNewItem() {
 	now := time.Now()
-	i := NewItem("example", now, 1 * time.Hour)
+	i := NewItem("example", now, 1*time.Hour)
 	fmt.Println(i.Value())
 	fmt.Println(i.Error())
 	fmt.Println(i.Duration())
@@ -24,7 +25,7 @@ func ExampleNewItem() {
 
 func ExampleNewErrorItem() {
 	now := time.Now()
-	i := NewErrorItem(errors.New("failure"), now, 10 * time.Minute)
+	i := NewErrorItem(errors.New("failure"), now, 10*time.Minute)
 	fmt.Println(i.Value())
 	fmt.Println(i.Error())
 	fmt.Println(i.Duration())
@@ -34,7 +35,7 @@ func ExampleNewErrorItem() {
 }
 
 func ExampleNewCacheableValue() {
-	i := NewCacheableValue("value", 1 * time.Hour)
+	i := NewCacheableValue("value", 1*time.Hour)
 	fmt.Println(i.Value())
 	fmt.Println(i.Error())
 	fmt.Println(i.Duration())
@@ -44,7 +45,7 @@ func ExampleNewCacheableValue() {
 }
 
 func ExampleNewCacheableError() {
-	i := NewCacheableError(errors.New("failure"), 10 * time.Minute)
+	i := NewCacheableError(errors.New("failure"), 10*time.Minute)
 	fmt.Println(i.Value())
 	fmt.Println(i.Error())
 	fmt.Println(i.Duration())

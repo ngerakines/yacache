@@ -2,9 +2,10 @@ package simple
 
 import (
 	"context"
-	"github.com/ngerakines/yacache"
 	"sync"
 	"time"
+
+	"github.com/ngerakines/yacache"
 )
 
 type Cache struct {
