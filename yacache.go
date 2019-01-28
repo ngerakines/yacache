@@ -10,6 +10,7 @@ type Cache interface {
 	Get(ctx context.Context, key Key, fetcher Fetcher) (Item, error)
 	Put(ctx context.Context, key Key, fetcher Fetcher) error
 	Contains(ctx context.Context, key Key) (bool, error)
+	Delete(ctx context.Context, key Key) error
 }
 
 // Item is a piece of data that has been cached.

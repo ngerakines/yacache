@@ -11,7 +11,7 @@ func ExampleKey() {
 	// Output: example
 }
 
-func ExampleItem() {
+func ExampleNewItem() {
 	now := time.Now()
 	i := NewItem("example", now, 1 * time.Hour)
 	fmt.Println(i.Value())
@@ -22,7 +22,7 @@ func ExampleItem() {
 	// 1h0m0s
 }
 
-func ExampleItem_error() {
+func ExampleNewErrorItem() {
 	now := time.Now()
 	i := NewErrorItem(errors.New("failure"), now, 10 * time.Minute)
 	fmt.Println(i.Value())
@@ -33,7 +33,7 @@ func ExampleItem_error() {
 	// 10m0s
 }
 
-func ExampleCacheableValue() {
+func ExampleNewCacheableValue() {
 	i := NewCacheableValue("value", 1 * time.Hour)
 	fmt.Println(i.Value())
 	fmt.Println(i.Error())
@@ -43,7 +43,7 @@ func ExampleCacheableValue() {
 	// 1h0m0s
 }
 
-func ExampleCacheableValue_error() {
+func ExampleNewCacheableError() {
 	i := NewCacheableError(errors.New("failure"), 10 * time.Minute)
 	fmt.Println(i.Value())
 	fmt.Println(i.Error())

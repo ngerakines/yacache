@@ -8,11 +8,28 @@ import (
 	"time"
 )
 
-func ExampleCache_Get() {
+func ExampleNewCache_Get() {
 	ctx := context.Background()
 	c := NewCache()
-	fmt.Println(c.Contains(ctx, Key("example")))
-	// Output: false <nil>
+	key := Key("foo")
+	fetcher := func(ctx context.Context, fkey yacache.Key) (yacache.Cacheable, error) {
+		return NewCacheableValue("bar", 1*time.Hour), nil
+	}
+	if item, err := c.Get(ctx, key, fetcher); err == nil {
+		fmt.Println(item.Value())
+	}
+	// Output: bar
+}
+
+func ExampleNewCache_Put() {
+	ctx := context.Background()
+	c := NewCache()
+	key := Key("foo")
+	fetcher := func(ctx context.Context, fkey yacache.Key) (yacache.Cacheable, error) {
+		return NewCacheableValue("bar", 1*time.Hour), nil
+	}
+	fmt.Println(c.Put(ctx, key, fetcher))
+	// Output: <nil>
 }
 
 func TestCache(t *testing.T) {
@@ -75,5 +92,17 @@ func TestCache(t *testing.T) {
 	}
 	if fmt.Sprintf("%s", item.Value()) != "value" {
 		t.Fatalf("key '%s' returned unexpected item: %s", key, item.Value())
+	}
+
+	if err = c.Delete(ctx, key); err != nil {
+		t.Fatal(err)
+	}
+
+	ok, err = c.Contains(ctx, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok {
+		t.Fatalf("key '%s' should not be in the cache", key)
 	}
 }

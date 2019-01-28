@@ -62,6 +62,15 @@ func (c *Cache) Contains(ctx context.Context, key yacache.Key) (bool, error) {
 	return hasItem, nil
 }
 
+func (c *Cache) Delete(ctx context.Context, key yacache.Key) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	delete(c.values, key.Value())
+
+	return nil
+}
+
 func itemFromCacheable(item yacache.Cacheable) yacache.Item {
 	if err := item.Error(); err != nil {
 		return NewErrorItem(err, time.Now(), item.Duration())
