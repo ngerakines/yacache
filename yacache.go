@@ -49,3 +49,5 @@ type Cacheable interface {
 }
 
 type Fetcher func(ctx context.Context, key Key) (Cacheable, error)
+
+type EvictionCallback func(key Key, item Item)
