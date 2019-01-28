@@ -10,7 +10,7 @@ import (
 
 type Cache struct {
 	keys   []string
-	values map[interface{}]yacache.Item
+	values map[string]yacache.Item
 
 	maxSize          int
 	evictionCallback yacache.EvictionCallback
@@ -21,7 +21,7 @@ type Cache struct {
 func NewCache(options ...CacheOption) yacache.Cache {
 	cache := &Cache{
 		keys:             make([]string, 0),
-		values:           make(map[interface{}]yacache.Item),
+		values:           make(map[string]yacache.Item),
 		maxSize:          -1,
 		evictionCallback: nil,
 	}

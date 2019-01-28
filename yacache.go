@@ -48,6 +48,8 @@ type Cacheable interface {
 	Duration() time.Duration
 }
 
+// Fetcher returns data to be used to populate a cache.
 type Fetcher func(ctx context.Context, key Key) (Cacheable, error)
 
+// EvictionCallback is a function that is called when data is removed from the cache.
 type EvictionCallback func(key Key, item Item)
