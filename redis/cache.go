@@ -180,7 +180,7 @@ func (c *Cache) clearExtra() error {
 	if c.maxSize > 0 {
 		switch c.purgeBehavior {
 		case lru:
-			keys, err = c.redisClient.Sort(c.keyTransform(hitsMetaKey), redis.Sort{
+			keys, err = c.redisClient.Sort(c.keyTransform(hitsMetaKey), &redis.Sort{
 				By:     "*->c",
 				Offset: float64(c.maxSize),
 				Count:  -1,
