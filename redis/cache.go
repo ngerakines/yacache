@@ -182,7 +182,7 @@ func (c *Cache) clearExtra() error {
 		case lru:
 			keys, err = c.redisClient.Sort(c.keyTransform(hitsMetaKey), &redis.Sort{
 				By:     "*->c",
-				Offset: float64(c.maxSize),
+				Offset: c.maxSize,
 				Count:  -1,
 			}).Result()
 			if err != nil {
