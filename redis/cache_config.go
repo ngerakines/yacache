@@ -11,6 +11,20 @@ func WithMaxSize(size int64) func(cache *Cache) error {
 	}
 }
 
+func WithLRU() func(cache *Cache) error {
+	return func(cache *Cache) error {
+		cache.purgeBehavior = lru
+		return nil
+	}
+}
+
+func WithLFA() func(cache *Cache) error {
+	return func(cache *Cache) error {
+		cache.purgeBehavior = lfa
+		return nil
+	}
+}
+
 func WithPrefix(prefix string) func(cache *Cache) error {
 	return func(cache *Cache) error {
 		cache.keyTransform = func(key string) string {

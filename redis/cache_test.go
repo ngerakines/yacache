@@ -61,7 +61,7 @@ func TestCacheWithPrefix(t *testing.T) {
 	cachetest.Standard(t, c, key, key2, fetcher)
 }
 
-func TestCacheMaxSize(t *testing.T) {
+func TestCacheMaxSize_lru(t *testing.T) {
 	fetcher := func(ctx context.Context, fkey yacache.Key) (yacache.Cacheable, error) {
 		return simple.NewCacheableValue("value", 1*time.Hour), nil
 	}
@@ -71,6 +71,25 @@ func TestCacheMaxSize(t *testing.T) {
 	c := NewCache(
 		redisClient,
 		WithMaxSize(5),
+		WithLRU(),
+		WithPrefix("TestCacheMaxSize"))
+
+	cachetest.MaxSize(t, c, fetcher, func(s string) yacache.Key {
+		return simple.Key(s)
+	})
+}
+
+func TestCacheMaxSize_lfa(t *testing.T) {
+	fetcher := func(ctx context.Context, fkey yacache.Key) (yacache.Cacheable, error) {
+		return simple.NewCacheableValue("value", 1*time.Hour), nil
+	}
+
+	redisClient := redisClient(t, 3)
+
+	c := NewCache(
+		redisClient,
+		WithMaxSize(5),
+		WithLFA(),
 		WithPrefix("TestCacheMaxSize"))
 
 	cachetest.MaxSize(t, c, fetcher, func(s string) yacache.Key {
@@ -96,7 +115,7 @@ func BenchmarkCacheGet(b *testing.B) {
 	}
 }
 
-func BenchmarkCacheGet_maxSize(b *testing.B) {
+func BenchmarkCacheGet_maxSize_lru(b *testing.B) {
 	ctx := context.Background()
 
 	fetcher := func(ctx context.Context, fkey yacache.Key) (yacache.Cacheable, error) {
@@ -108,6 +127,29 @@ func BenchmarkCacheGet_maxSize(b *testing.B) {
 	c := NewCache(
 		redisClient,
 		WithMaxSize(50),
+		WithLRU(),
+	)
+	for i := 0; i < b.N; i++ {
+		_, err := c.Get(ctx, simple.Key(fmt.Sprintf("%d", i)), fetcher)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkCacheGet_maxSize_lfa(b *testing.B) {
+	ctx := context.Background()
+
+	fetcher := func(ctx context.Context, fkey yacache.Key) (yacache.Cacheable, error) {
+		return simple.NewCacheableValue("value", 1*time.Hour), nil
+	}
+
+	redisClient := redisClient(b, 2)
+
+	c := NewCache(
+		redisClient,
+		WithMaxSize(50),
+		WithLFA(),
 	)
 	for i := 0; i < b.N; i++ {
 		_, err := c.Get(ctx, simple.Key(fmt.Sprintf("%d", i)), fetcher)

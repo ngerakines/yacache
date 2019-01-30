@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 
@@ -10,12 +11,20 @@ import (
 	"github.com/ngerakines/yacache/simple"
 )
 
+type purgeBehavior int8
+
+const (
+	lru = 0
+	lfa = 1
+)
+
 type Cache struct {
-	redisClient  *redis.Client
-	maxSize      int64
-	prefix       string
-	mu           sync.Mutex
-	keyTransform KeyTransform
+	redisClient   *redis.Client
+	maxSize       int64
+	prefix        string
+	mu            sync.Mutex
+	keyTransform  KeyTransform
+	purgeBehavior purgeBehavior
 }
 
 const (
@@ -28,10 +37,11 @@ const (
 // NewCache returns a new yacache.Cache that is backed by Redis.
 func NewCache(redisClient *redis.Client, options ...CacheOption) yacache.Cache {
 	cache := &Cache{
-		redisClient:  redisClient,
-		maxSize:      -1,
-		prefix:       "",
-		keyTransform: DefaultKeyTransform,
+		redisClient:   redisClient,
+		maxSize:       -1,
+		prefix:        "",
+		keyTransform:  DefaultKeyTransform,
+		purgeBehavior: lru,
 	}
 
 	for _, option := range options {
@@ -50,20 +60,24 @@ func (c *Cache) Get(ctx context.Context, key yacache.Key, fetcher yacache.Fetche
 
 	get, err := c.redisClient.HGetAll(c.keyTransform(kv)).Result()
 	if getValue, ok := get[valueAttribute]; ok {
-		if c.maxSize > -1 {
-			_, err = c.redisClient.ZAddXX(c.keyTransform(hitsMetaKey), redis.Z{Score: float64(now.UnixNano()), Member: kv}).Result()
+		if c.maxSize > 0 && c.purgeBehavior == lfa {
+			_, err = c.redisClient.ZAddXX(c.keyTransform(hitsMetaKey), redis.Z{Score: float64(now.UnixNano()), Member: c.keyTransform(kv)}).Result()
 			if err != nil {
 				return nil, err
 			}
 		}
-		created, err := time.Parse(time.RFC822Z, get[createdAttribute])
+
+		createdInt, err := strconv.ParseInt(get[createdAttribute], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		created := time.Unix(0, createdInt)
+
 		if err != nil {
 			return nil, err
 		}
 		dur, err := time.ParseDuration(get[durationAttribute])
-		if err != nil {
-			return nil, err
-		}
+
 		return simple.NewItem(getValue, created, dur), nil
 	}
 
@@ -110,7 +124,11 @@ func (c *Cache) Delete(ctx context.Context, key yacache.Key) error {
 
 	_, err := c.redisClient.Pipelined(func(pipeliner redis.Pipeliner) error {
 		pipeliner.Del(c.keyTransform(kv))
-		pipeliner.ZRem(c.keyTransform(hitsMetaKey), c.keyTransform(kv))
+		if c.maxSize > 0 && c.purgeBehavior == lru {
+			pipeliner.SRem(c.keyTransform(hitsMetaKey), c.keyTransform(kv))
+		} else if c.maxSize > 0 && c.purgeBehavior == lru {
+			pipeliner.ZRem(c.keyTransform(hitsMetaKey), c.keyTransform(kv))
+		}
 		return nil
 	})
 	return err
@@ -129,11 +147,13 @@ func (c *Cache) getAndSet(ctx context.Context, key yacache.Key, fetcher yacache.
 	_, err = c.redisClient.Pipelined(func(pipe redis.Pipeliner) error {
 		pipe.HMSet(c.keyTransform(kv), map[string]interface{}{
 			valueAttribute:    item.Value(),
-			createdAttribute:  item.Cached().Format(time.RFC822Z),
+			createdAttribute:  item.Cached().UnixNano(),
 			durationAttribute: item.Duration().String(),
 		})
 		pipe.Expire(c.keyTransform(kv), item.Duration())
-		if c.maxSize > -1 {
+		if c.maxSize > 0 && c.purgeBehavior == lru {
+			pipe.SAdd(c.keyTransform(hitsMetaKey), c.keyTransform(kv))
+		} else if c.maxSize > 0 && c.purgeBehavior == lfa {
 			pipe.ZAdd(c.keyTransform(hitsMetaKey), redis.Z{Score: float64(now.UnixNano()), Member: c.keyTransform(kv)})
 		}
 		return nil
@@ -145,26 +165,49 @@ func (c *Cache) getAndSet(ctx context.Context, key yacache.Key, fetcher yacache.
 }
 
 func (c *Cache) clearExtra() error {
+	var keys []string
+	var count int64
+	var err error
 	if c.maxSize > 0 {
-		count, err := c.redisClient.ZCount(c.keyTransform(hitsMetaKey), "-inf", "+inf").Result()
-		if err != nil {
-			return err
-		}
-		if count > c.maxSize {
-			scores, err := c.redisClient.ZRevRange(c.keyTransform(hitsMetaKey), c.maxSize, -1).Result()
+		switch c.purgeBehavior {
+		case lru:
+			keys, err = c.redisClient.Sort(c.keyTransform(hitsMetaKey), redis.Sort{
+				By:     "*->c",
+				Offset: float64(c.maxSize),
+				Count:  -1,
+			}).Result()
 			if err != nil {
 				return err
 			}
-			_, err = c.redisClient.Pipelined(func(pipeliner redis.Pipeliner) error {
-				pipeliner.Del(scores...)
-				for _, score := range scores {
+		case lfa:
+			count, err = c.redisClient.ZCount(c.keyTransform(hitsMetaKey), "-inf", "+inf").Result()
+			if err != nil {
+				return err
+			}
+			if count > c.maxSize {
+				keys, err = c.redisClient.ZRevRange(c.keyTransform(hitsMetaKey), c.maxSize, -1).Result()
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	if len(keys) > 0 {
+		_, err = c.redisClient.Pipelined(func(pipeliner redis.Pipeliner) error {
+			pipeliner.Del(keys...)
+			if c.maxSize > 0 && c.purgeBehavior == lru {
+				for _, score := range keys {
+					pipeliner.SRem(c.keyTransform(hitsMetaKey), score)
+				}
+			} else if c.maxSize > 0 && c.purgeBehavior == lfa {
+				for _, score := range keys {
 					pipeliner.ZRem(c.keyTransform(hitsMetaKey), score)
 				}
-				return nil
-			})
-			if err != nil {
-				return err
 			}
+			return nil
+		})
+		if err != nil {
+			return err
 		}
 	}
 	return nil

@@ -77,6 +77,8 @@ func Standard(t *testing.T, c yacache.Cache, key, key2 yacache.Key, fetcher yaca
 }
 
 func MaxSize(t *testing.T, c yacache.Cache, fetcher yacache.Fetcher, keyFactory SimpleKeyFactory) {
+	t.Helper()
+
 	ctx := context.Background()
 
 	for i := 10; i >= 6; i-- {
