@@ -22,7 +22,7 @@ type Cache struct {
 	redisClient   *redis.Client
 	maxSize       int64
 	prefix        string
-	mu            sync.Mutex
+	mu            sync.RWMutex
 	keyTransform  KeyTransform
 	purgeBehavior purgeBehavior
 }
@@ -52,14 +52,18 @@ func NewCache(redisClient *redis.Client, options ...CacheOption) yacache.Cache {
 }
 
 func (c *Cache) Get(ctx context.Context, key yacache.Key, fetcher yacache.Fetcher) (yacache.Item, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
 
 	kv := key.Value()
 	now := time.Now()
 
 	get, err := c.redisClient.HGetAll(c.keyTransform(kv)).Result()
+	if err != nil {
+		defer c.mu.RUnlock()
+		return nil, err
+	}
 	if getValue, ok := get[valueAttribute]; ok {
+		defer c.mu.RUnlock()
 		if c.maxSize > 0 && c.purgeBehavior == lfa {
 			_, err = c.redisClient.ZAddXX(c.keyTransform(hitsMetaKey), redis.Z{Score: float64(now.UnixNano()), Member: c.keyTransform(kv)}).Result()
 			if err != nil {
@@ -80,6 +84,11 @@ func (c *Cache) Get(ctx context.Context, key yacache.Key, fetcher yacache.Fetche
 
 		return simple.NewItem(getValue, created, dur), nil
 	}
+
+	c.mu.RUnlock()
+	// NKG: Right here. This is the danger zone.
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	item, err := c.getAndSet(ctx, key, fetcher)
 	if err != nil {
@@ -110,8 +119,8 @@ func (c *Cache) Put(ctx context.Context, key yacache.Key, fetcher yacache.Fetche
 }
 
 func (c *Cache) Contains(ctx context.Context, key yacache.Key) (bool, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	return c.redisClient.HExists(c.keyTransform(key.Value()), valueAttribute).Result()
 }
@@ -166,7 +175,7 @@ func (c *Cache) getAndSet(ctx context.Context, key yacache.Key, fetcher yacache.
 
 func (c *Cache) clearExtra() error {
 	var keys []string
-	var count int64
+	//var count int64
 	var err error
 	if c.maxSize > 0 {
 		switch c.purgeBehavior {
@@ -180,15 +189,9 @@ func (c *Cache) clearExtra() error {
 				return err
 			}
 		case lfa:
-			count, err = c.redisClient.ZCount(c.keyTransform(hitsMetaKey), "-inf", "+inf").Result()
+			keys, err = c.redisClient.ZRevRange(c.keyTransform(hitsMetaKey), c.maxSize, -1).Result()
 			if err != nil {
 				return err
-			}
-			if count > c.maxSize {
-				keys, err = c.redisClient.ZRevRange(c.keyTransform(hitsMetaKey), c.maxSize, -1).Result()
-				if err != nil {
-					return err
-				}
 			}
 		}
 	}
