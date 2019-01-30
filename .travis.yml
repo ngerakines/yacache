@@ -16,4 +16,4 @@ matrix:
 
 install:
 - go get github.com/go-redis/redis
-
+- go get github.com/pkg/errors
