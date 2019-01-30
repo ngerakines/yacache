@@ -53,3 +53,7 @@ type Fetcher func(ctx context.Context, key Key) (Cacheable, error)
 
 // EvictionCallback is a function that is called when data is removed from the cache.
 type EvictionCallback func(key Key, item Item)
+
+type Marshaller func(interface{}) ([]byte, error)
+
+type Unmarshaller func([]byte, interface{}) error

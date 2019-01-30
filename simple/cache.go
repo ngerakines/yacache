@@ -51,7 +51,7 @@ func (c *Cache) Get(ctx context.Context, key yacache.Key, fetcher yacache.Fetche
 		return nil, err
 	}
 
-	item = itemFromCacheable(cacheable)
+	item = ItemFromCacheable(cacheable)
 	c.keys = append(c.keys, kv)
 	c.values[kv] = item
 
@@ -75,7 +75,7 @@ func (c *Cache) Put(ctx context.Context, key yacache.Key, fetcher yacache.Fetche
 		return err
 	}
 
-	item := itemFromCacheable(cacheable)
+	item := ItemFromCacheable(cacheable)
 	c.keys = append(c.keys, kv)
 	c.values[kv] = item
 
@@ -126,7 +126,7 @@ func remove(s []string, r string) []string {
 	return s
 }
 
-func itemFromCacheable(item yacache.Cacheable) yacache.Item {
+func ItemFromCacheable(item yacache.Cacheable) yacache.Item {
 	if err := item.Error(); err != nil {
 		return NewErrorItem(err, time.Now(), item.Duration())
 	}
