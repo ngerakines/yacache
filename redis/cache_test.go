@@ -4,11 +4,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/go-redis/redis"
 	"github.com/ngerakines/yacache"
 	"github.com/ngerakines/yacache/simple"
-	"testing"
-	"time"
 )
 
 var (

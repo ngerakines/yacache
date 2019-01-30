@@ -8,6 +8,7 @@ import (
 	"github.com/ngerakines/yacache"
 )
 
+// Cache is an implementation of yacache.Cache that stores values in memory.
 type Cache struct {
 	keys   []string
 	values map[string]yacache.Item
@@ -18,6 +19,7 @@ type Cache struct {
 	mu sync.Mutex
 }
 
+// NewCache returns a configured simple cache implementation.
 func NewCache(options ...CacheOption) yacache.Cache {
 	cache := &Cache{
 		keys:             make([]string, 0),
@@ -126,6 +128,8 @@ func remove(s []string, r string) []string {
 	return s
 }
 
+// ItemFromCacheable populates an Item from a Cachable using the helpers
+// NewItem or NewErrorItem.
 func ItemFromCacheable(item yacache.Cacheable) yacache.Item {
 	if err := item.Error(); err != nil {
 		return NewErrorItem(err, time.Now(), item.Duration())

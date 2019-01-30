@@ -10,7 +10,7 @@ func TestDefaultMarshaller(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(out,[]byte("foo")) {
+	if !bytes.Equal(out, []byte("foo")) {
 		t.Fatal("bytes not the same")
 	}
 

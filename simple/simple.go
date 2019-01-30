@@ -6,8 +6,11 @@ import (
 	"github.com/ngerakines/yacache"
 )
 
+// Key is a simple key implementation that is backed by the Golang string
+// type.
 type Key string
 
+// Item is a simple item implementation.
 type Item struct {
 	value    interface{}
 	err      error
@@ -15,16 +18,20 @@ type Item struct {
 	duration time.Duration
 }
 
+// CacheableValue is a Cacheable structure for values (non-errors).
 type CacheableValue struct {
 	value    interface{}
 	duration time.Duration
 }
 
+// CacheableError is a Cacheable structure for errors.
 type CacheableError struct {
 	err      error
 	duration time.Duration
 }
 
+// NewErrorItem returns an Item structure for a value (non-error), ensuring
+// it conforms to the yacache Item interface.
 func NewItem(value interface{}, cached time.Time, duration time.Duration) yacache.Item {
 	return Item{
 		value:    value,
@@ -34,6 +41,8 @@ func NewItem(value interface{}, cached time.Time, duration time.Duration) yacach
 	}
 }
 
+// NewErrorItem returns an Item structure for an error, ensuring it conforms
+// to the yacache Item interface.
 func NewErrorItem(err error, cached time.Time, duration time.Duration) yacache.Item {
 	return Item{
 		value:    nil,
@@ -43,6 +52,8 @@ func NewErrorItem(err error, cached time.Time, duration time.Duration) yacache.I
 	}
 }
 
+// NewCacheableValue returns a Cacheable structure for a value (non-error),
+// ensuring it conforms to the yacache Cacheable interface.
 func NewCacheableValue(value interface{}, duration time.Duration) yacache.Cacheable {
 	return CacheableValue{
 		value:    value,
@@ -50,6 +61,8 @@ func NewCacheableValue(value interface{}, duration time.Duration) yacache.Cachea
 	}
 }
 
+// NewCacheableValue returns a Cacheable structure for an error, ensuring it
+// conforms to the yacache Cacheable interface.
 func NewCacheableError(err error, duration time.Duration) yacache.Cacheable {
 	return CacheableError{
 		err:      err,
