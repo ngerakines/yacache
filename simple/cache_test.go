@@ -72,3 +72,37 @@ func TestCacheMaxSize(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkCacheGet(b *testing.B) {
+	ctx := context.Background()
+
+	fetcher := func(ctx context.Context, fkey yacache.Key) (yacache.Cacheable, error) {
+		return NewCacheableValue("value", 1*time.Hour), nil
+	}
+
+	c := NewCache()
+
+	for i := 0; i < b.N; i++ {
+		_, err := c.Get(ctx, Key(fmt.Sprintf("%d", i)), fetcher)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkCacheGet_maxSize(b *testing.B) {
+	ctx := context.Background()
+
+	fetcher := func(ctx context.Context, fkey yacache.Key) (yacache.Cacheable, error) {
+		return NewCacheableValue("value", 1*time.Hour), nil
+	}
+
+	c := NewCache(WithMaxSize(100))
+
+	for i := 0; i < b.N; i++ {
+		_, err := c.Get(ctx, Key(fmt.Sprintf("%d", i)), fetcher)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
